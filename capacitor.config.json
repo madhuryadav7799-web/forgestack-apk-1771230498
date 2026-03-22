@@ -1,0 +1,13 @@
+{
+  "appId": "com.forgestack.app",
+  "appName": "ForgeStack",
+  "webDir": "build",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "buildOptions": {
+      "releaseType": "APK"
+    }
+  }
+}
