@@ -2,67 +2,73 @@ name: Build Android APK
 
 on:
   push:
+    branches: [ '**' ]
+  pull_request:
     branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-    
+        cache: 'npm'
+
     - name: Setup Java
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
-    
+
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
-    
+
     - name: Install dependencies
-      run: npm install --legacy-peer-deps
-    
-    - name: Build React app
+      run: npm ci --legacy-peer-deps
+
+    - name: Build React web app
       run: npm run build
       env:
         CI: false
-    
-    - name: Add Capacitor
-      run: |
-        npm install @capacitor/core @capacitor/cli @capacitor/android --legacy-peer-deps
-        npx cap init "ForgeStack App" "com.forgestack.app" --web-dir=build || true
-        npx cap add android || true
-    
-    - name: Sync Capacitor
+
+    - name: Sync Capacitor (copy web assets to Android project)
       run: npx cap sync android
-    
+
     - name: Make gradlew executable
       run: chmod +x android/gradlew
-    
+
     - name: Build Debug APK
       run: |
         cd android
         ./gradlew assembleDebug --no-daemon
-    
-    - name: Upload APK
+      env:
+        JAVA_HOME: ${{ env.JAVA_HOME }}
+
+    - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug
+        name: forgestack-debug-apk
         path: android/app/build/outputs/apk/debug/app-debug.apk
-        retention-days: 7
+        retention-days: 30
 
-    - name: Get APK info
+    - name: APK build summary
       run: |
         APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
-        APK_SIZE=$(du -h $APK_PATH | cut -f1)
+        APK_SIZE=$(du -h "$APK_PATH" | cut -f1)
         echo "### 📱 APK Built Successfully!" >> $GITHUB_STEP_SUMMARY
-        echo "- **Size:** $APK_SIZE" >> $GITHUB_STEP_SUMMARY
-        echo "- **Download:** Check Artifacts section below" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+        echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+        echo "| **App ID** | com.forgestack.app |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Size** | $APK_SIZE |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Type** | Debug |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "⬇️ Download the APK from the **Artifacts** section of this workflow run." >> $GITHUB_STEP_SUMMARY
+
